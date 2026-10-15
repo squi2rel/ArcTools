@@ -1,0 +1,61 @@
+plugins { id 'base' }
+
+def wrapper = rootProject.file('gradlew').absolutePath
+def minecraftVersions = ['1.20.1', '1.21.1', '1.21.11', '26.2']
+
+def commonBuild = tasks.register('buildCommon', Exec) {
+    workingDir rootProject.projectDir
+    commandLine wrapper, '-p', 'common', 'build', '--console=plain'
+}
+
+def versionBuilds = []
+minecraftVersions.each { mc ->
+    def previous = versionBuilds ? versionBuilds.last() : commonBuild
+    versionBuilds.add(tasks.register("buildMinecraft${mc.replace('.', '')}", Exec) {
+        dependsOn commonBuild
+        mustRunAfter previous
+        workingDir rootProject.projectDir
+        commandLine wrapper, '-p', mc, 'build', '--console=plain'
+    })
+}
+
+def mainJars = minecraftVersions.collectMany { mc ->
+    def properties = new Properties()
+    file("$mc/gradle.properties").withInputStream { properties.load(it) }
+    ['fabric', 'forge', 'neoforge'].findAll { file("$mc/$it/build.gradle").isFile() }.collect { loader ->
+        file("$mc/$loader/build/libs/${properties.archives_name}-$mc-$loader-${properties.mod_version}.jar")
+    }
+}
+
+def collectJars = tasks.register('collectJars', Sync) {
+    group = 'build'
+    description = 'Collects the main loader jars into build/libs for uploading.'
+    dependsOn versionBuilds
+    from mainJars
+    into layout.buildDirectory.dir('libs')
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    doFirst {
+        mainJars.each { jar ->
+            if (!jar.isFile()) throw new GradleException("Missing main loader jar: $jar")
+        }
+    }
+}
+
+tasks.register('buildAll') {
+    group = 'build'
+    description = 'Builds common and every supported Minecraft/loader artifact.'
+    dependsOn collectJars
+}
+
+tasks.named('build') { dependsOn tasks.named('buildAll') }
+
+tasks.register('cleanAll') {
+    group = 'build'
+    doLast {
+        delete layout.buildDirectory
+        delete file('common/build')
+        minecraftVersions.each { mc ->
+            ['bridge', 'fabric', 'forge', 'neoforge'].each { module -> delete file("$mc/$module/build") }
+        }
+    }
+}

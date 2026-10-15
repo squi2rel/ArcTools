@@ -1,0 +1,11 @@
+rootProject.name = 'arctools'
+
+includeBuild('common') {
+    name = 'arctools-common-build'
+}
+
+['1.20.1', '1.21.1', '1.21.11', '26.2'].each { minecraftVersion ->
+    includeBuild(minecraftVersion) {
+        name = "arctools-$minecraftVersion"
+    }
+}

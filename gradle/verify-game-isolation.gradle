@@ -1,0 +1,26 @@
+tasks.register('verifyMinecraftIsolation') {
+    group = 'verification'
+    description = 'Checks that loader packaging has no Minecraft, Mojang, backend, or Mixin API dependencies.'
+    inputs.files(sourceSets.main.allJava)
+    doLast {
+        def forbidden = ['net.minecraft.', 'com.mojang', 'org.spongepowered.asm.mixin', 'arc.backend.minecraft']
+        inputs.files.each { source ->
+            source.eachLine { line, number ->
+                if (forbidden.any { line.contains(it) }) {
+                    throw new GradleException("Game API reference in $source:$number: $line")
+                }
+            }
+        }
+        [configurations.compileClasspath, configurations.runtimeClasspath].each { configuration ->
+            configuration.incoming.resolutionResult.allComponents.each { component ->
+                def id = component.id
+                if (id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier &&
+                        (id.group == 'net.minecraft' || id.group.startsWith('com.mojang') ||
+                                id.group == 'org.spongepowered' || id.module.contains('mixin'))) {
+                    throw new GradleException("Game API dependency in $configuration.name: $id")
+                }
+            }
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('verifyMinecraftIsolation') }

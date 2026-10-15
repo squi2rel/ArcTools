@@ -1,0 +1,36 @@
+modLoader = "javafml"
+loaderVersion = "[11,)"
+issueTrackerURL = "https://github.com/squi2rel/ArcTools/issues"
+license = "AGPL-3.0-only"
+
+[[mods]]
+modId = "arctools"
+version = "${version}"
+displayName = "ArcTools"
+authors = "squi2rel"
+description = '''
+Inspector and Rhino tester tools for ArcLib on Minecraft.
+'''
+iconFile = "assets/arctools/icon.png"
+
+[[dependencies.arctools]]
+modId = "neoforge"
+type = "required"
+versionRange = "[26.2.0.93,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.arctools]]
+modId = "arclib"
+type = "required"
+versionRange = "[1.0.0,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.arctools]]
+modId = "minecraft"
+type = "required"
+versionRange = "[26.2]"
+ordering = "NONE"
+side = "CLIENT"
+

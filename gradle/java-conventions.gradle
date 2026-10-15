@@ -1,0 +1,25 @@
+// Shared conventions for every Minecraft-version module. Game/loader plugins stay in the version build.
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+
+group = rootProject.maven_group
+version = rootProject.mod_version
+base { archivesName = "${rootProject.archives_name}-${rootProject.minecraft_version}-${project.name}" }
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net/' }
+}
+def targetJava = rootProject.java_version.toInteger()
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(targetJava)
+    sourceCompatibility = JavaVersion.toVersion(targetJava)
+    targetCompatibility = JavaVersion.toVersion(targetJava)
+    withSourcesJar()
+}
+tasks.withType(JavaCompile).configureEach {
+    options.release = targetJava
+    options.encoding = 'UTF-8'
+}
+tasks.named('jar') {
+    from(rootProject.file('../LICENSE')) { rename { "LICENSE_${rootProject.archives_name}" } }
+}

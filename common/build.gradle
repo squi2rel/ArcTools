@@ -1,0 +1,56 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'com.github.squi2rel.arctools'
+version = '1.0.0'
+
+base { archivesName = 'arctools-common' }
+repositories { mavenCentral() }
+
+dependencies {
+    api 'com.github.squi2rel.arclib:arclib-common:1.0.0'
+    api 'org.mozilla:rhino:1.9.1'
+    compileOnly 'org.slf4j:slf4j-api:2.0.17'
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('verifyCommonIsolation') {
+    group = 'verification'
+    inputs.files(fileTree('src/main/java') { include '**/*.java' })
+    doLast {
+        def forbidden = ['net.minecraft', 'com.mojang', 'net.fabricmc', 'net.neoforged', 'org.spongepowered.asm.mixin', 'arc.backend.minecraft']
+        def violations = []
+        inputs.files.files.sort().each { source ->
+            source.eachLine { line, number ->
+                forbidden.each { name ->
+                    if (line.contains(name)) violations << "${source}:$number: $line"
+                }
+            }
+        }
+        if (!violations.empty) throw new GradleException("Common source isolation failed:\n" + violations.join('\n'))
+    }
+}
+
+tasks.named('check') { dependsOn tasks.named('verifyCommonIsolation') }
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'arctools-common'
+            from components.java
+        }
+    }
+}

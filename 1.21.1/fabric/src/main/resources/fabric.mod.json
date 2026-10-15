@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "arctools",
+  "version": "${version}",
+  "name": "ArcTools",
+  "description": "Inspector and Rhino tester tools for ArcLib on Minecraft.",
+  "authors": [
+    "squi2rel"
+  ],
+  "contact": {
+    "sources": "https://github.com/squi2rel/ArcTools",
+    "issues": "https://github.com/squi2rel/ArcTools/issues"
+  },
+  "license": "AGPL-3.0-only",
+  "icon": "assets/arctools/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.github.squi2rel.arctools.fabric.ArcToolsFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "=1.21.1",
+    "java": ">=21",
+    "arclib": ">=1.0.0"
+  }
+}

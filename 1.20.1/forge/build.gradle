@@ -1,0 +1,14 @@
+plugins { id 'com.gradleup.shadow' }
+
+repositories { maven { url = 'https://maven.minecraftforge.net/' } }
+dependencies {
+    compileOnly("net.minecraftforge:javafmllanguage:$rootProject.forge_version") { transitive = false }
+    compileOnly("net.minecraftforge:fmlloader:$rootProject.forge_version") { transitive = false }
+    compileOnly("net.minecraftforge:fmlcore:$rootProject.forge_version") { transitive = false }
+    compileOnly('net.minecraftforge:mergetool:1.1.5:api') { transitive = false }
+    compileOnly('net.minecraftforge:eventbus:6.0.5') { transitive = false }
+    compileOnly('net.minecraftforge:forgespi:7.0.1') { transitive = false }
+}
+
+apply from: rootProject.file('../gradle/loader-packaging.gradle')
+apply from: rootProject.file('../gradle/verify-game-isolation.gradle')

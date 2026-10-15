@@ -1,0 +1,8 @@
+pluginManagement { repositories { gradlePluginPortal() } }
+rootProject.name = 'arctools-common'
+includeBuild('../../multiplatform/common') {
+    name = 'arclib-common-build'
+    dependencySubstitution {
+        substitute module('com.github.squi2rel.arclib:arclib-common') using project(':')
+    }
+}

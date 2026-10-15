@@ -1,0 +1,110 @@
+// Package only this mod's common/bridge code. Libraries and other mods are declared by each loader.
+def commonArtifact = "${rootProject.maven_group}:${rootProject.archives_name}-common:${rootProject.mod_version}"
+def bridgeProject = rootProject.findProject(':bridge')
+def mapped = plugins.hasPlugin('dev.architectury.loom')
+def moddev = plugins.hasPlugin('net.neoforged.moddev')
+
+configurations {
+    commonCode { canBeResolved = true; canBeConsumed = false; transitive = false }
+    shadowBundle { canBeResolved = true; canBeConsumed = false; transitive = false }
+}
+dependencies {
+    compileOnly commonArtifact
+    commonCode commonArtifact
+    shadowBundle commonArtifact
+}
+
+if (mapped) {
+    configurations {
+        common { canBeResolved = true; canBeConsumed = false; transitive = false }
+        compileClasspath.extendsFrom common
+        runtimeClasspath.extendsFrom common
+    }
+    configurations.named([fabric: 'developmentFabric', forge: 'developmentForge', neoforge: 'developmentNeoForge'][project.name]) {
+        extendsFrom configurations.common
+    }
+    def platform = [fabric: 'Fabric', forge: 'Forge', neoforge: 'NeoForge'][project.name]
+    dependencies {
+        shadowBundle project(path: ':bridge', configuration: "transformProduction$platform")
+    }
+    if (project.name == 'fabric') {
+        dependencies {
+            common project(path: ':bridge', configuration: 'namedElements')
+            runtimeOnly files(configurations.commonCode)
+        }
+    } else {
+        // Common and bridge share packages; FML must load them as one development module.
+        configurations {
+            developmentCommon { canBeResolved = true; canBeConsumed = false; transitive = false }
+        }
+        dependencies {
+            developmentCommon commonArtifact
+            developmentCommon project(path: ':bridge', configuration: 'namedElements')
+        }
+        def developmentBundle = tasks.register('developmentBundle', Jar) {
+            archiveClassifier = 'development-common'
+            destinationDirectory = layout.buildDirectory.dir('devlibs')
+            duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+            dependsOn configurations.developmentCommon
+            from { configurations.developmentCommon.collect { zipTree(it) } }
+        }
+        dependencies { common files(developmentBundle) }
+    }
+} else if (bridgeProject != null) {
+    // Unmapped 26.x: no loader or game dependencies may escape the shared bridge.
+    dependencies {
+        compileOnly(project(':bridge')) { transitive = false }
+        runtimeOnly files(bridgeProject.sourceSets.main.output)
+        shadowBundle project(':bridge')
+    }
+    def unpackCommon = tasks.register('unpackCommon', Sync) {
+        dependsOn configurations.commonCode
+        from { configurations.commonCode.collect { zipTree(it) } }
+        exclude 'META-INF/MANIFEST.MF'
+        into layout.buildDirectory.dir('common-classes')
+    }
+    // Register common classes with the same mod source set, including IDE run configurations.
+    sourceSets.main.output.dir([builtBy: unpackCommon], unpackCommon.map { it.destinationDir })
+    if (moddev) {
+        neoForge.mods.register(rootProject.archives_name) {
+            sourceSet sourceSets.main
+            sourceSet bridgeProject.sourceSets.main
+        }
+    } else {
+        loom.mods.register(rootProject.archives_name) {
+            sourceSet sourceSets.main
+            sourceSet bridgeProject.sourceSets.main
+        }
+    }
+} else {
+    // Loader-only modules (ArcTools) retain their isolation from Minecraft APIs.
+    dependencies { runtimeOnly files(configurations.commonCode) }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching(['fabric.mod.json', 'META-INF/neoforge.mods.toml', 'META-INF/mods.toml']) {
+        expand version: project.version
+    }
+}
+if (plugins.hasPlugin('com.gradleup.shadow')) {
+    tasks.named('jar') { archiveClassifier = mapped ? 'dev' : 'thin' }
+    tasks.named('shadowJar') {
+        configurations = [project.configurations.shadowBundle]
+        archiveClassifier = mapped ? 'dev-shadow' : ''
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+    if (mapped) {
+        tasks.named('remapJar') {
+            inputFile.set tasks.named('shadowJar').flatMap { it.archiveFile }
+            archiveClassifier = ''
+        }
+    }
+    tasks.named('assemble') { dependsOn tasks.named('shadowJar') }
+} else {
+    tasks.named('jar') {
+        dependsOn configurations.shadowBundle
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        from { configurations.shadowBundle.collect { zipTree(it) } }
+    }
+}
